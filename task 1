@@ -1,0 +1,183 @@
+import json
+import os
+import tkinter as tk
+from tkinter import messagebox
+
+TASKS_FILE = 'tasks.json'
+
+def load_tasks():
+    """Load tasks from a JSON file."""
+    if os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, 'r') as file:
+            return json.load(file)
+    return []
+
+def save_tasks(tasks):
+    """Save tasks to a JSON file."""
+    with open(TASKS_FILE, 'w') as file:
+        json.dump(tasks, file, indent=4)
+
+def add_task(description):
+    """Add a new task."""
+    tasks = load_tasks()
+    if description:
+        tasks.append({'description': description, 'completed': False})
+        save_tasks(tasks)
+        return "Task added successfully!"
+    else:
+        return "Task description cannot be empty."
+
+def view_tasks():
+    """Return all tasks as a list of strings."""
+    tasks = load_tasks()
+    if not tasks:
+        return ["No tasks found."]
+    else:
+        return [f"{i + 1}. {task['description']} [{'✓' if task['completed'] else '✗'}]" for i, task in enumerate(tasks)]
+
+def update_task(index):
+    """Mark a task as completed."""
+    tasks = load_tasks()
+    if 0 <= index < len(tasks):
+        tasks[index]['completed'] = True
+        save_tasks(tasks)
+        return "Task marked as completed!"
+    else:
+        return "Invalid task number."
+
+def delete_task(index):
+    """Delete a task."""
+    tasks = load_tasks()
+    if 0 <= index < len(tasks):
+        tasks.pop(index)
+        save_tasks(tasks)
+        return "Task deleted successfully!"
+    else:
+        return "Invalid task number."
+
+def run_cli():
+    """Run the command-line interface."""
+    while True:
+        print("\nTo-Do List Application")
+        print("1. Add Task")
+        print("2. View Tasks")
+        print("3. Update Task")
+        print("4. Delete Task")
+        print("5. Exit")
+
+        choice = input("Enter your choice (1-5): ").strip()
+
+        if choice == '1':
+            description = input("Enter the task description: ").strip()
+            print(add_task(description))
+        elif choice == '2':
+            tasks = view_tasks()
+            for task in tasks:
+                print(task)
+        elif choice == '3':
+            tasks = view_tasks()
+            for i, task in enumerate(tasks):
+                print(task)
+            try:
+                index = int(input("Enter the task number to mark as completed: ")) - 1
+                print(update_task(index))
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+        elif choice == '4':
+            tasks = view_tasks()
+            for i, task in enumerate(tasks):
+                print(task)
+            try:
+                index = int(input("Enter the task number to delete: ")) - 1
+                print(delete_task(index))
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+        elif choice == '5':
+            print("Exiting...")
+            break
+        else:
+            print("Invalid choice. Please enter a number between 1 and 5.")
+
+def run_gui():
+    """Run the graphical user interface."""
+    class TodoApp:
+        def __init__(self, root):
+            """Initialize the GUI application."""
+            self.root = root
+            self.root.title("To-Do List Application")
+
+            # Load tasks
+            self.tasks = load_tasks()
+
+            # Create and place widgets
+            self.task_listbox = tk.Listbox(root, selectmode=tk.SINGLE)
+            self.task_listbox.pack(fill=tk.BOTH, expand=True)
+
+            self.entry = tk.Entry(root)
+            self.entry.pack(fill=tk.X)
+
+            self.add_button = tk.Button(root, text="Add Task", command=self.add_task)
+            self.add_button.pack()
+
+            self.update_button = tk.Button(root, text="Mark as Completed", command=self.update_task)
+            self.update_button.pack()
+
+            self.delete_button = tk.Button(root, text="Delete Task", command=self.delete_task)
+            self.delete_button.pack()
+
+            # Refresh the list of tasks
+            self.refresh_list()
+
+        def refresh_list(self):
+            """Update the task listbox."""
+            self.task_listbox.delete(0, tk.END)
+            tasks = view_tasks()
+            for task in tasks:
+                self.task_listbox.insert(tk.END, task)
+
+        def add_task(self):
+            """Add a new task."""
+            description = self.entry.get()
+            message = add_task(description)
+            if "successfully" in message:
+                self.entry.delete(0, tk.END)
+                self.refresh_list()
+            else:
+                messagebox.showwarning("Input Error", message)
+
+        def update_task(self):
+            """Mark the selected task as completed."""
+            try:
+                index = self.task_listbox.curselection()[0]
+                message = update_task(index)
+                if "completed" in message:
+                    self.refresh_list()
+                else:
+                    messagebox.showwarning("Update Error", message)
+            except IndexError:
+                messagebox.showwarning("Selection Error", "Please select a task to mark as completed")
+
+        def delete_task(self):
+            """Delete the selected task."""
+            try:
+                index = self.task_listbox.curselection()[0]
+                message = delete_task(index)
+                if "deleted" in message:
+                    self.refresh_list()
+                else:
+                    messagebox.showwarning("Deletion Error", message)
+            except IndexError:
+                messagebox.showwarning("Selection Error", "Please select a task to delete")
+
+    root = tk.Tk()
+    app = TodoApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    mode = input("Choose mode (cli/gui): ").strip().lower()
+    if mode == 'cli':
+        run_cli()
+    elif mode == 'gui':
+        run_gui()
+    else:
+        print("Invalid mode selected. Please enter 'cli' or 'gui'.")
